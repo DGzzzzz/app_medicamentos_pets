@@ -16,6 +16,7 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   final _supabase = Supabase.instance.client;
   late StreamSubscription<AuthState> _authSubscription;
   final TextEditingController _descricaoController = TextEditingController();
+  final FocusNode _descricaoFocusNode = FocusNode();
   DateTime? _dataAplicacao;
   DateTime? _validade;
   String? _editingId;
@@ -40,6 +41,7 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   void dispose() {
     _authSubscription.cancel();
     _descricaoController.dispose();
+    _descricaoFocusNode.dispose();
     super.dispose();
   }
 
@@ -74,12 +76,16 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isAplicacao) async {
-    // Remove o foco antes de abrir o picker para o teclado não reabrir depois
+    _descricaoFocusNode.unfocus();
     FocusScope.of(context).unfocus();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
+      initialDate: isAplicacao
+          ? (_dataAplicacao ?? DateTime.now())
+          : (_validade ?? _dataAplicacao ?? DateTime.now()),
+      firstDate: (!isAplicacao && _dataAplicacao != null)
+          ? _dataAplicacao!
+          : DateTime(2000),
       lastDate: DateTime(2100),
       locale: const Locale('pt', 'BR'),
       builder: (context, child) {
@@ -96,10 +102,17 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
         );
       },
     );
+    if (context.mounted) {
+      _descricaoFocusNode.unfocus();
+      FocusScope.of(context).unfocus();
+    }
     if (picked != null) {
       setState(() {
         if (isAplicacao) {
           _dataAplicacao = picked;
+          if (_validade != null && _validade!.isBefore(picked)) {
+            _validade = null;
+          }
         } else {
           _validade = picked;
         }
@@ -368,57 +381,40 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
 
   Widget _buildDescricaoField() {
     final count = _descricaoController.text.length;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        TextField(
-          controller: _descricaoController,
-          maxLength: _maxDescricaoLength,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(_maxDescricaoLength),
-          ],
-          // Suprime o contador padrão (fica abaixo do campo, fora do lugar)
-          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-          decoration: InputDecoration(
-            labelText: 'Descrição',
-            labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF777777)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
-            ),
-          ),
-          style: const TextStyle(fontSize: 14),
-          onChanged: (_) => setState(() {}),
-        ),
-        // Contador flutuante sobre a borda superior direita (igual ao label)
-        Positioned(
-          top: 0,
-          right: 14,
-          child: Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Text(
-              '$count/$_maxDescricaoLength',
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFF999999),
-              ),
-            ),
-          ),
-        ),
+    return TextField(
+      controller: _descricaoController,
+      focusNode: _descricaoFocusNode,
+      maxLength: _maxDescricaoLength,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(_maxDescricaoLength),
       ],
+      buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+      decoration: InputDecoration(
+        labelText: 'Descrição',
+        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF777777)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        suffix: Text(
+          '$count/$_maxDescricaoLength',
+          style: const TextStyle(fontSize: 10, color: Color(0xFF999999)),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
+        ),
+      ),
+      style: const TextStyle(fontSize: 14),
+      onChanged: (_) => setState(() {}),
     );
   }
 
