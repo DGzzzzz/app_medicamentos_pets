@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(keytool -list -v -keystore \"C:/Users/Usuario/.android/debug.keystore\" -alias androiddebugkey -storepass android -keypass android)"
     ]
   }
 }

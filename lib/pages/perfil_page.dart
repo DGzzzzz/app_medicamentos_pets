@@ -35,11 +35,19 @@ class _PerfilPageState extends State<PerfilPage>
   bool _isUploadingFoto = false;
   String? _fotoUrl;
 
+  // Valores originais para detectar alterações no perfil
+  String _nomeInicial = '';
+  String? _fotoUrlInicial;
+
+  bool get _perfilAlterado =>
+      _nomeCtrl.text.trim() != _nomeInicial || _fotoUrl != _fotoUrlInicial;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _currentUser = _supabase.auth.currentUser;
+    _nomeCtrl.addListener(() { if (mounted) setState(() {}); });
 
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       if (!mounted) return;
@@ -80,6 +88,8 @@ class _PerfilPageState extends State<PerfilPage>
         setState(() {
           _nomeCtrl.text = data['nome_completo'] ?? '';
           _fotoUrl = data['foto_url'];
+          _nomeInicial = _nomeCtrl.text;
+          _fotoUrlInicial = _fotoUrl;
         });
       } else {
         // Preenche com dados do OAuth (Google) se disponível
@@ -87,6 +97,8 @@ class _PerfilPageState extends State<PerfilPage>
         setState(() {
           _nomeCtrl.text = meta?['full_name'] ?? meta?['name'] ?? '';
           _fotoUrl = meta?['avatar_url'];
+          _nomeInicial = _nomeCtrl.text;
+          _fotoUrlInicial = _fotoUrl;
         });
       }
     } catch (e) {
@@ -105,6 +117,12 @@ class _PerfilPageState extends State<PerfilPage>
         'foto_url': _fotoUrl,
         'updated_at': DateTime.now().toIso8601String(),
       });
+      if (mounted) {
+        setState(() {
+          _nomeInicial = _nomeCtrl.text.trim();
+          _fotoUrlInicial = _fotoUrl;
+        });
+      }
       _showSnackBar('Perfil salvo com sucesso!');
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e', isError: true);
@@ -141,10 +159,22 @@ class _PerfilPageState extends State<PerfilPage>
     }
     setState(() => _isLoadingAuth = true);
     try {
-      await _supabase.auth.signUp(
+      final response = await _supabase.auth.signUp(
         email: _emailRegistroCtrl.text.trim(),
         password: _senhaRegistroCtrl.text,
       );
+      // Supabase retorna identities vazio quando o email já está cadastrado
+      if (response.user != null &&
+          (response.user!.identities?.isEmpty ?? false)) {
+        _emailLoginCtrl.text = _emailRegistroCtrl.text.trim();
+        _showSnackBar(
+          'Este email já possui uma conta. Redirecionando para o login...',
+          isError: true,
+        );
+        await Future.delayed(const Duration(milliseconds: 1800));
+        if (mounted) _tabController.animateTo(0);
+        return;
+      }
       if (mounted) setState(() => _registroEmailEnviado = true);
       _showSnackBar('Conta criada! Verifique seu email para confirmar.');
     } on AuthException catch (e) {
@@ -156,6 +186,82 @@ class _PerfilPageState extends State<PerfilPage>
     }
   }
 
+  Future<void> _recuperarSenha() async {
+    final emailCtrl = TextEditingController(text: _emailLoginCtrl.text.trim());
+    String? emailParaEnvio;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Recuperar senha',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Informe seu email para receber o link de redefinição de senha.',
+              style: TextStyle(fontSize: 14, color: Color(0xFF555555)),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                labelStyle:
+                    const TextStyle(fontSize: 13, color: Color(0xFF777777)),
+                prefixIcon: const Icon(Icons.email_outlined,
+                    size: 20, color: Color(0xFF777777)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
+                ),
+              ),
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar',
+                style: TextStyle(color: Color(0xFF777777))),
+          ),
+          TextButton(
+            onPressed: () {
+              emailParaEnvio = emailCtrl.text.trim();
+              Navigator.pop(ctx);
+            },
+            child: const Text(
+              'Enviar',
+              style: TextStyle(
+                  color: Color(0xFF2E7D32), fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    emailCtrl.dispose();
+    if (emailParaEnvio == null || emailParaEnvio!.isEmpty) return;
+
+    try {
+      await _supabase.auth.resetPasswordForEmail(emailParaEnvio!);
+      _showSnackBar('Link de recuperação enviado para $emailParaEnvio!');
+    } on AuthException catch (e) {
+      _showSnackBar(_traduzirErro(e.message), isError: true);
+    } catch (_) {
+      _showSnackBar('Erro ao enviar email. Tente novamente.', isError: true);
+    }
+  }
+
   Future<void> _loginComGoogle() async {
     setState(() => _isLoadingAuth = true);
     try {
@@ -163,9 +269,11 @@ class _PerfilPageState extends State<PerfilPage>
         OAuthProvider.google,
         redirectTo: 'medicamentospets://login-callback',
       );
-      // O listener onAuthStateChange cuida do resto
     } catch (e) {
       _showSnackBar('Erro no login com Google: $e', isError: true);
+    } finally {
+      // O browser foi aberto; reseta o loading imediatamente.
+      // O onAuthStateChange cuida do login quando o usuário voltar.
       if (mounted) setState(() => _isLoadingAuth = false);
     }
   }
@@ -234,6 +342,8 @@ class _PerfilPageState extends State<PerfilPage>
         setState(() {
           _nomeCtrl.clear();
           _fotoUrl = null;
+          _nomeInicial = '';
+          _fotoUrlInicial = null;
           _registroEmailEnviado = false;
         });
       }
@@ -392,7 +502,24 @@ class _PerfilPageState extends State<PerfilPage>
                   setState(() => _mostrarSenhaLogin = !_mostrarSenhaLogin),
             ),
           ),
-          const SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _recuperarSenha,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Esqueci minha senha',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF2E7D32),
+                    fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           _buildBotaoPrimario(
             label: 'Entrar',
             isLoading: _isLoadingAuth,
@@ -588,7 +715,7 @@ class _PerfilPageState extends State<PerfilPage>
           _buildBotaoPrimario(
             label: 'Salvar perfil',
             isLoading: _isSavingPerfil,
-            onPressed: _salvarPerfil,
+            onPressed: _perfilAlterado ? _salvarPerfil : null,
           ),
           const SizedBox(height: 40),
 
@@ -661,7 +788,7 @@ class _PerfilPageState extends State<PerfilPage>
   Widget _buildBotaoPrimario({
     required String label,
     required bool isLoading,
-    required VoidCallback onPressed,
+    VoidCallback? onPressed,
   }) {
     return SizedBox(
       width: double.infinity,
