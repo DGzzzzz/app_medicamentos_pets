@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(xargs grep *)",
-      "Bash(keytool -list -v -keystore \"C:/Users/Usuario/.android/debug.keystore\" -alias androiddebugkey -storepass android -keypass android)"
+      "Bash(keytool -list -v -keystore \"C:/Users/Usuario/.android/debug.keystore\" -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(/c/Program Files/Java/jdk-26/bin/keytool.exe *)",
+      "Bash(flutter build *)",
+      "Bash(flutter doctor *)"
     ]
   }
 }

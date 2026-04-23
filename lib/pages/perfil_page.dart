@@ -252,7 +252,6 @@ class _PerfilPageState extends State<PerfilPage>
       ),
     );
 
-    emailCtrl.dispose();
     if (emailParaEnvio == null || emailParaEnvio!.isEmpty) return;
 
     try {
@@ -465,6 +464,7 @@ class _PerfilPageState extends State<PerfilPage>
               borderRadius: BorderRadius.circular(10),
             ),
             indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
             labelColor: Colors.white,
             unselectedLabelColor: const Color(0xFF555555),
             labelStyle:

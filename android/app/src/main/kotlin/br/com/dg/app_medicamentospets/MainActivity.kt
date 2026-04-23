@@ -1,4 +1,4 @@
-package com.example.app_medicamentos_pets
+package br.com.dg.app_medicamentospets
 
 import io.flutter.embedding.android.FlutterActivity
 

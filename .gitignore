@@ -46,3 +46,6 @@ app.*.map.json
 
 # random
 playstore.md
+
+# Keystore de produção — NUNCA commitar
+android/app/keystore/

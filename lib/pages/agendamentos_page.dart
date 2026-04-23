@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/agendamento.dart';
+import '../models/configuracao_notificacao.dart';
 import '../widgets/agendamento_list_item.dart';
 
 class AgendamentosPage extends StatefulWidget {
@@ -24,6 +25,8 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   bool _isLoading = false;
 
   List<Agendamento> _agendamentos = [];
+  bool _notificarAntes = false;
+  int _diasAntes = 7;
 
   static const int _maxDescricaoLength = 100;
 
@@ -31,10 +34,12 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   void initState() {
     super.initState();
     _carregarAgendamentos();
-    // Recarrega a lista quando o usuário loga ou desloga
-    _authSubscription =
-        _supabase.auth.onAuthStateChange.listen((_) {
-      if (mounted) _carregarAgendamentos();
+    _carregarConfiguracoes();
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((_) {
+      if (mounted) {
+        _carregarAgendamentos();
+        _carregarConfiguracoes();
+      }
     });
   }
 
@@ -44,6 +49,25 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
     _descricaoController.dispose();
     _descricaoFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _carregarConfiguracoes() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+    try {
+      final data = await _supabase
+          .from('configuracoes_notificacao')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+      if (data != null && mounted) {
+        final config = ConfiguracaoNotificacao.fromMap(data);
+        setState(() {
+          _notificarAntes = config.notificarAntes;
+          _diasAntes = config.diasAntes;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _carregarAgendamentos() async {
@@ -609,6 +633,8 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
                 return AgendamentoListItem(
                   agendamento: _agendamentos[index],
                   isEven: index.isEven,
+                  notificarAntes: _notificarAntes,
+                  diasAntes: _diasAntes,
                   onEdit: () => _editarAgendamento(_agendamentos[index]),
                   onDelete: () => _excluirAgendamento(_agendamentos[index]),
                 );

@@ -6,10 +6,9 @@ plugins {
 }
 
 android {
-    // TODO: Altere o namespace para o applicationId definitivo após mudá-lo abaixo
-    namespace = "com.example.app_medicamentos_pets"
+    namespace = "br.com.dg.app_medicamentospets"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,32 +20,27 @@ android {
     }
 
     defaultConfig {
-        // TODO: Mude para seu domínio próprio antes de publicar (ex: br.com.seudominio.medicamentospets)
-        // NUNCA publique com com.example.* — a Play Store rejeita automaticamente
-        applicationId = "com.example.app_medicamentos_pets"
-        minSdk = 21
+        applicationId = "br.com.dg.app_medicamentospets"
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     signingConfigs {
-        // TODO (MANUAL): Após criar o keystore de produção, preencha os dados abaixo
-        // e substitua o signingConfig no bloco release.
-        // create("release") {
-        //     storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore/release.jks")
-        //     storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-        //     keyAlias = System.getenv("KEY_ALIAS") ?: ""
-        //     keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-        // }
+        create("release") {
+            storeFile = file("keystore/release.jks")
+            storePassword = "Medi\$Pet7413"
+            keyAlias = "medicamentos"
+            keyPassword = "Medi\$Pet7413"
+        }
     }
 
     buildTypes {
         release {
-            // TODO (MANUAL): Quando criar o keystore, troque por: signingConfigs.getByName("release")
-            signingConfig = signingConfigs.getByName("debug")
-            minifyEnabled = true
-            shrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
