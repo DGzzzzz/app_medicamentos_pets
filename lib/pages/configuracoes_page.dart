@@ -31,7 +31,13 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
     _authSubscription =
         _supabase.auth.onAuthStateChange.listen((_) {
       if (mounted) {
-        setState(() { _configId = null; });
+        setState(() {
+          _configId = null;
+          _notificarAntes = false;
+          _diasAntes = 7;
+          _notificarApos = false;
+          _diasApos = 3;
+        });
         _carregarConfiguracoes();
       }
     });
@@ -66,6 +72,14 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
           _diasAntes = config.diasAntes;
           _notificarApos = config.notificarApos;
           _diasApos = config.diasApos;
+        });
+      } else {
+        setState(() {
+          _configId = null;
+          _notificarAntes = false;
+          _diasAntes = 7;
+          _notificarApos = false;
+          _diasApos = 3;
         });
       }
     } catch (e) {

@@ -46,6 +46,7 @@ app.*.map.json
 
 # random
 playstore.md
+erros.md
 
 # Keystore de produção — NUNCA commitar
 android/app/keystore/

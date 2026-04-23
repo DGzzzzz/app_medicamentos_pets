@@ -36,6 +36,11 @@ class _MainPageState extends State<MainPage> {
     _authSubscription =
         Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (!mounted) return;
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        // Garante que PerfilPage esteja visível para exibir o dialog de nova senha
+        setState(() => _currentNavIndex = 0);
+        return;
+      }
       final loggedIn = data.session?.user != null;
       setState(() => _currentNavIndex = loggedIn ? 1 : 0);
     });

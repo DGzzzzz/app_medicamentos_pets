@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PerfilPage extends StatefulWidget {
   const PerfilPage({super.key});
@@ -636,7 +637,18 @@ class _PerfilPageState extends State<PerfilPage>
       return 'A senha deve ter pelo menos 6 caracteres.';
     if (message.contains('Unable to validate email address'))
       return 'Email inválido.';
+    if (message.contains('security purposes') ||
+        message.contains('rate limit') ||
+        message.contains('email_rate_limit'))
+      return 'Aguarde alguns minutos antes de solicitar novamente.';
     return 'Ocorreu um erro. Tente novamente.';
+  }
+
+  Future<void> _abrirUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showSnackBar('Não foi possível abrir o link.', isError: true);
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -1035,6 +1047,46 @@ class _PerfilPageState extends State<PerfilPage>
                       fontSize: 15, fontWeight: FontWeight.w600)),
             ),
           ),
+
+          // ─── Links legais ───
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => _abrirUrl(
+                    'https://politica-privacidade-chi.vercel.app/'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Política de Privacidade',
+                  style: TextStyle(
+                      fontSize: 12, color: Color(0xFF999999)),
+                ),
+              ),
+              Text('·',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.grey.shade400)),
+              TextButton(
+                onPressed: () => _abrirUrl(
+                    'https://exclusao-dados-lime.vercel.app/'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Exclusão de Dados',
+                  style: TextStyle(
+                      fontSize: 12, color: Color(0xFF999999)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

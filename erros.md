@@ -1,2 +1,0 @@
-- configuração esta vindo de outro usuário
-- link para recuperar senha nao funciona _> supabase ![alt text](image-5.png) -> email ![alt text](image-6.png) -> pagina redirecionada ![alt text](image-7.png)
