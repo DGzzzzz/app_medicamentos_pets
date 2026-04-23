@@ -91,7 +91,7 @@ Future<void> agendarVerificacaoDiaria() async {
     _taskUniqueName,
     _taskName,
     frequency: const Duration(hours: 24),
-    existingWorkPolicy: ExistingWorkPolicy.replace,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
     constraints: Constraints(networkType: NetworkType.connected),
   );
 }
