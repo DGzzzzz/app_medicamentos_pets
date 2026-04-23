@@ -387,7 +387,7 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
                 Switch(
                   value: ativo,
                   onChanged: onToggle,
-                  activeColor: const Color(0xFF2E7D32),
+                  activeThumbColor: const Color(0xFF2E7D32),
                   activeTrackColor: const Color(
                     0xFF66BB6A,
                   ).withValues(alpha: 0.4),

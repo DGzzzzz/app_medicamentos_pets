@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'pages/main_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:workmanager/workmanager.dart';
+import 'pages/main_page.dart';
+import 'services/notification_service.dart';
+import 'services/background_task.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Supabase.initialize(
     url: 'https://fehmhdpkbzrjpruzxuqa.supabase.co',
     anonKey: 'sb_publishable_wR9OMVnavXX30_pC__wY0A_28llfZZ5',
   );
+
+  await NotificationService.initialize();
+
+  await Workmanager().initialize(callbackDispatcher);
+  await agendarVerificacaoDiaria();
+
   runApp(const MyApp());
 }
 

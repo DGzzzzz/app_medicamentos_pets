@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
+import '../services/notification_service.dart';
 import 'agendamentos_page.dart';
 import 'configuracoes_page.dart';
 import 'perfil_page.dart';
@@ -31,6 +32,11 @@ class _MainPageState extends State<MainPage> {
     final isLoggedIn =
         Supabase.instance.client.auth.currentUser != null;
     _currentNavIndex = isLoggedIn ? 1 : 0;
+
+    // Solicita permissão de notificação após o primeiro frame (Android 13+)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.requestPermission();
+    });
 
     // Navega automaticamente ao logar / deslogar
     _authSubscription =

@@ -6,7 +6,8 @@
       "Bash(/c/Program Files/Java/jdk-26/bin/keytool.exe *)",
       "Bash(flutter build *)",
       "Bash(flutter doctor *)",
-      "Bash(flutter pub *)"
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)"
     ]
   }
 }

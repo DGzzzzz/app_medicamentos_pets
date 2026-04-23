@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Notificações locais (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- WorkManager: reagendar tarefas após reinicialização do dispositivo -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- WorkManager: manter o processador ativo durante a tarefa -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:label="Medicamentos Pets"
         android:name="${applicationName}"

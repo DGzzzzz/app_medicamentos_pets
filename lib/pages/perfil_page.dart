@@ -627,20 +627,26 @@ class _PerfilPageState extends State<PerfilPage>
   }
 
   String _traduzirErro(String message) {
-    if (message.contains('Invalid login credentials'))
+    if (message.contains('Invalid login credentials')) {
       return 'Email ou senha incorretos.';
-    if (message.contains('Email not confirmed'))
+    }
+    if (message.contains('Email not confirmed')) {
       return 'Confirme seu email antes de entrar.';
-    if (message.contains('User already registered'))
+    }
+    if (message.contains('User already registered')) {
       return 'Este email já está cadastrado.';
-    if (message.contains('Password should be at least'))
+    }
+    if (message.contains('Password should be at least')) {
       return 'A senha deve ter pelo menos 6 caracteres.';
-    if (message.contains('Unable to validate email address'))
+    }
+    if (message.contains('Unable to validate email address')) {
       return 'Email inválido.';
+    }
     if (message.contains('security purposes') ||
         message.contains('rate limit') ||
-        message.contains('email_rate_limit'))
+        message.contains('email_rate_limit')) {
       return 'Aguarde alguns minutos antes de solicitar novamente.';
+    }
     return 'Ocorreu um erro. Tente novamente.';
   }
 
