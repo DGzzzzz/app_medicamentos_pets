@@ -1,3 +1,2 @@
-- recebendo email para resetar a senha mas o link nao leva a lugar nenhum.
-- o entrar com google esta funcionando, porem ele nao deveria bloquear o login de contas que nao existem ainda? e direcionar para tela de cadastro para criar com conta google?
-- adicionar funcionalidade na pagina de perfil para alterar senha, deve conter a senha atual e a nova senha e confirmar a nova senha. e enviar aviso de alteracao de senha por email
+- configuração esta vindo de outro usuário
+- link para recuperar senha nao funciona _> supabase ![alt text](image-5.png) -> email ![alt text](image-6.png) -> pagina redirecionada ![alt text](image-7.png)

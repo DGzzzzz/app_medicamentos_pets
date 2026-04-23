@@ -52,6 +52,13 @@ class _PerfilPageState extends State<PerfilPage>
 
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       if (!mounted) return;
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        setState(() => _currentUser = data.session?.user);
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) { if (mounted) _mostrarDialogNovaSenha(); },
+        );
+        return;
+      }
       setState(() {
         _currentUser = data.session?.user;
         _isLoadingAuth = false;
@@ -255,7 +262,10 @@ class _PerfilPageState extends State<PerfilPage>
     if (emailParaEnvio == null || emailParaEnvio!.isEmpty) return;
 
     try {
-      await _supabase.auth.resetPasswordForEmail(emailParaEnvio!);
+      await _supabase.auth.resetPasswordForEmail(
+        emailParaEnvio!,
+        redirectTo: 'medicamentospets://login-callback',
+      );
       _showSnackBar('Link de recuperação enviado para $emailParaEnvio!');
     } on AuthException catch (e) {
       _showSnackBar(_traduzirErro(e.message), isError: true);
@@ -357,6 +367,261 @@ class _PerfilPageState extends State<PerfilPage>
           _registroEmailEnviado = false;
         });
       }
+    }
+  }
+
+  bool get _isEmailUser =>
+      _currentUser?.identities?.any((i) => i.provider == 'email') ?? false;
+
+  Future<void> _mostrarDialogNovaSenha() async {
+    final novaSenhaCtrl = TextEditingController();
+    final confirmarCtrl = TextEditingController();
+    bool mostrarNova = false;
+    bool mostrarConfirmar = false;
+    String? novaSenha;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: const Text('Criar nova senha',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Defina sua nova senha abaixo.',
+                style: TextStyle(fontSize: 14, color: Color(0xFF555555)),
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: novaSenhaCtrl,
+                label: 'Nova senha',
+                icon: Icons.lock_outline,
+                obscure: !mostrarNova,
+                suffix: IconButton(
+                  icon: Icon(
+                    mostrarNova
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: const Color(0xFF777777),
+                  ),
+                  onPressed: () =>
+                      setDialogState(() => mostrarNova = !mostrarNova),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: confirmarCtrl,
+                label: 'Confirmar nova senha',
+                icon: Icons.lock_reset,
+                obscure: !mostrarConfirmar,
+                suffix: IconButton(
+                  icon: Icon(
+                    mostrarConfirmar
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: const Color(0xFF777777),
+                  ),
+                  onPressed: () => setDialogState(
+                      () => mostrarConfirmar = !mostrarConfirmar),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                final nova = novaSenhaCtrl.text;
+                final confirmar = confirmarCtrl.text;
+                if (nova.length < 6) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content:
+                        Text('A senha deve ter pelo menos 6 caracteres.'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ));
+                  return;
+                }
+                if (nova != confirmar) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text('As senhas não coincidem.'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ));
+                  return;
+                }
+                novaSenha = nova;
+                Navigator.pop(ctx);
+              },
+              child: const Text('Confirmar',
+                  style: TextStyle(
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (novaSenha == null) return;
+    try {
+      await _supabase.auth.updateUser(UserAttributes(password: novaSenha!));
+      _showSnackBar('Senha redefinida com sucesso!');
+    } catch (e) {
+      if (kDebugMode) debugPrint('_mostrarDialogNovaSenha: $e');
+      _showSnackBar('Não foi possível redefinir a senha. Tente novamente.',
+          isError: true);
+    }
+  }
+
+  Future<void> _mostrarDialogAlterarSenha() async {
+    final senhaAtualCtrl = TextEditingController();
+    final novaSenhaCtrl = TextEditingController();
+    final confirmarCtrl = TextEditingController();
+    bool mostrarAtual = false;
+    bool mostrarNova = false;
+    bool mostrarConfirmar = false;
+    String? senhaAtual;
+    String? novaSenha;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: const Text('Alterar senha',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTextField(
+                controller: senhaAtualCtrl,
+                label: 'Senha atual',
+                icon: Icons.lock_outline,
+                obscure: !mostrarAtual,
+                suffix: IconButton(
+                  icon: Icon(
+                    mostrarAtual
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: const Color(0xFF777777),
+                  ),
+                  onPressed: () =>
+                      setDialogState(() => mostrarAtual = !mostrarAtual),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: novaSenhaCtrl,
+                label: 'Nova senha',
+                icon: Icons.lock_reset,
+                obscure: !mostrarNova,
+                suffix: IconButton(
+                  icon: Icon(
+                    mostrarNova
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: const Color(0xFF777777),
+                  ),
+                  onPressed: () =>
+                      setDialogState(() => mostrarNova = !mostrarNova),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: confirmarCtrl,
+                label: 'Confirmar nova senha',
+                icon: Icons.lock_reset,
+                obscure: !mostrarConfirmar,
+                suffix: IconButton(
+                  icon: Icon(
+                    mostrarConfirmar
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: const Color(0xFF777777),
+                  ),
+                  onPressed: () => setDialogState(
+                      () => mostrarConfirmar = !mostrarConfirmar),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: Color(0xFF777777))),
+            ),
+            TextButton(
+              onPressed: () {
+                final atual = senhaAtualCtrl.text;
+                final nova = novaSenhaCtrl.text;
+                final confirmar = confirmarCtrl.text;
+                if (atual.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text('Informe a senha atual.'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ));
+                  return;
+                }
+                if (nova.length < 6) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text(
+                        'A nova senha deve ter pelo menos 6 caracteres.'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ));
+                  return;
+                }
+                if (nova != confirmar) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                    content: Text('As senhas não coincidem.'),
+                    backgroundColor: Color(0xFFEF5350),
+                  ));
+                  return;
+                }
+                senhaAtual = atual;
+                novaSenha = nova;
+                Navigator.pop(ctx);
+              },
+              child: const Text('Confirmar',
+                  style: TextStyle(
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (senhaAtual == null || novaSenha == null) return;
+    await _alterarSenha(senhaAtual!, novaSenha!);
+  }
+
+  Future<void> _alterarSenha(String senhaAtual, String novaSenha) async {
+    setState(() => _isLoadingAuth = true);
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: _currentUser!.email!,
+        password: senhaAtual,
+      );
+      await _supabase.auth.updateUser(UserAttributes(password: novaSenha));
+      _showSnackBar('Senha alterada com sucesso!');
+    } on AuthException catch (e) {
+      _showSnackBar(_traduzirErro(e.message), isError: true);
+    } catch (e) {
+      if (kDebugMode) debugPrint('_alterarSenha: $e');
+      _showSnackBar('Não foi possível alterar a senha. Tente novamente.',
+          isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoadingAuth = false);
     }
   }
 
@@ -728,7 +993,29 @@ class _PerfilPageState extends State<PerfilPage>
             isLoading: _isSavingPerfil,
             onPressed: _perfilAlterado ? _salvarPerfil : null,
           ),
-          const SizedBox(height: 40),
+
+          // ─── Alterar senha (somente contas e-mail) ───
+          if (_isEmailUser) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _mostrarDialogAlterarSenha,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2E7D32),
+                  side: const BorderSide(color: Color(0xFF66BB6A)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.lock_outline, size: 20),
+                label: const Text('Alterar senha',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 28),
 
           // ─── Botão sair ───
           SizedBox(
