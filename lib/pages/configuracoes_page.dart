@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/configuracao_notificacao.dart';
@@ -68,7 +69,8 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
         });
       }
     } catch (e) {
-      _showSnackBar('Erro ao carregar configurações: $e', isError: true);
+      if (kDebugMode) debugPrint('_carregarConfiguracoes: $e');
+      _showSnackBar('Não foi possível carregar as configurações. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -108,7 +110,8 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
       }
       _showSnackBar('Configurações salvas com sucesso!');
     } catch (e) {
-      _showSnackBar('Erro ao salvar: $e', isError: true);
+      if (kDebugMode) debugPrint('_salvarConfiguracoes: $e');
+      _showSnackBar('Não foi possível salvar. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

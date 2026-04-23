@@ -6,6 +6,7 @@ plugins {
 }
 
 android {
+    // TODO: Altere o namespace para o applicationId definitivo após mudá-lo abaixo
     namespace = "com.example.app_medicamentos_pets"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -20,21 +21,36 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // TODO: Mude para seu domínio próprio antes de publicar (ex: br.com.seudominio.medicamentospets)
+        // NUNCA publique com com.example.* — a Play Store rejeita automaticamente
         applicationId = "com.example.app_medicamentos_pets"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 21
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // TODO (MANUAL): Após criar o keystore de produção, preencha os dados abaixo
+        // e substitua o signingConfig no bloco release.
+        // create("release") {
+        //     storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore/release.jks")
+        //     storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+        //     keyAlias = System.getenv("KEY_ALIAS") ?: ""
+        //     keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        // }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO (MANUAL): Quando criar o keystore, troque por: signingConfigs.getByName("release")
             signingConfig = signingConfigs.getByName("debug")
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

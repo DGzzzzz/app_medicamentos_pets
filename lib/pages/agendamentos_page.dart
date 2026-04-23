@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -62,7 +63,8 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
             (data as List).map((e) => Agendamento.fromMap(e)).toList();
       });
     } catch (e) {
-      _showSnackBar('Erro ao carregar agendamentos: $e', isError: true);
+      if (kDebugMode) debugPrint('_carregarAgendamentos: $e');
+      _showSnackBar('Não foi possível carregar os agendamentos. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -172,7 +174,8 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
             : 'Agendamento salvo com sucesso!',
       );
     } catch (e) {
-      _showSnackBar('Erro ao salvar: $e', isError: true);
+      if (kDebugMode) debugPrint('_salvarAgendamento: $e');
+      _showSnackBar('Não foi possível salvar. Tente novamente.', isError: true);
     }
   }
 
@@ -227,7 +230,8 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
                 await _carregarAgendamentos();
                 _showSnackBar('Agendamento excluído!', isError: true);
               } catch (e) {
-                _showSnackBar('Erro ao excluir: $e', isError: true);
+                if (kDebugMode) debugPrint('_excluirAgendamento: $e');
+                _showSnackBar('Não foi possível excluir. Tente novamente.', isError: true);
               }
             },
             child: const Text(

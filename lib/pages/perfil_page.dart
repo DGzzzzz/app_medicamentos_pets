@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -102,7 +103,8 @@ class _PerfilPageState extends State<PerfilPage>
         });
       }
     } catch (e) {
-      _showSnackBar('Erro ao carregar perfil: $e', isError: true);
+      if (kDebugMode) debugPrint('_carregarPerfil: $e');
+      _showSnackBar('Não foi possível carregar o perfil. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isLoadingPerfil = false);
     }
@@ -125,7 +127,8 @@ class _PerfilPageState extends State<PerfilPage>
       }
       _showSnackBar('Perfil salvo com sucesso!');
     } catch (e) {
-      _showSnackBar('Erro ao salvar: $e', isError: true);
+      if (kDebugMode) debugPrint('_salvarPerfil: $e');
+      _showSnackBar('Não foi possível salvar. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isSavingPerfil = false);
     }
@@ -270,7 +273,8 @@ class _PerfilPageState extends State<PerfilPage>
         redirectTo: 'medicamentospets://login-callback',
       );
     } catch (e) {
-      _showSnackBar('Erro no login com Google: $e', isError: true);
+      if (kDebugMode) debugPrint('_loginComGoogle: $e');
+      _showSnackBar('Não foi possível conectar com o Google. Tente novamente.', isError: true);
     } finally {
       // O browser foi aberto; reseta o loading imediatamente.
       // O onAuthStateChange cuida do login quando o usuário voltar.
@@ -288,10 +292,16 @@ class _PerfilPageState extends State<PerfilPage>
     );
     if (picked == null) return;
 
+    final ext = picked.name.split('.').last.toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!validExts.contains(ext)) {
+      _showSnackBar('Formato inválido. Use JPG, PNG ou WebP.', isError: true);
+      return;
+    }
+
     setState(() => _isUploadingFoto = true);
     try {
       final bytes = await picked.readAsBytes();
-      final ext = picked.name.split('.').last.toLowerCase();
       // Pasta = userId, arquivo = avatar.ext → permite validação por RLS
       final filePath = '${_currentUser!.id}/avatar.$ext';
 
@@ -307,7 +317,8 @@ class _PerfilPageState extends State<PerfilPage>
       setState(() =>
           _fotoUrl = '$url?t=${DateTime.now().millisecondsSinceEpoch}');
     } catch (e) {
-      _showSnackBar('Erro ao enviar foto: $e', isError: true);
+      if (kDebugMode) debugPrint('_alterarFoto: $e');
+      _showSnackBar('Não foi possível enviar a foto. Tente novamente.', isError: true);
     } finally {
       if (mounted) setState(() => _isUploadingFoto = false);
     }
@@ -361,7 +372,7 @@ class _PerfilPageState extends State<PerfilPage>
       return 'A senha deve ter pelo menos 6 caracteres.';
     if (message.contains('Unable to validate email address'))
       return 'Email inválido.';
-    return 'Erro: $message';
+    return 'Ocorreu um erro. Tente novamente.';
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
