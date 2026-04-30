@@ -14,8 +14,10 @@ class AgendamentosPage extends StatefulWidget {
   State<AgendamentosPage> createState() => _AgendamentosPageState();
 }
 
-class _AgendamentosPageState extends State<AgendamentosPage> {
+class _AgendamentosPageState extends State<AgendamentosPage>
+    with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
+  late TabController _tabController;
   late StreamSubscription<AuthState> _authSubscription;
   final TextEditingController _descricaoController = TextEditingController();
   final FocusNode _descricaoFocusNode = FocusNode();
@@ -25,6 +27,7 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   bool _isLoading = false;
 
   List<Agendamento> _agendamentos = [];
+  List<Agendamento> _agendamentosFinalizados = [];
   bool _notificarAntes = false;
   int _diasAntes = 7;
 
@@ -33,6 +36,7 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _carregarAgendamentos();
     _carregarConfiguracoes();
     _authSubscription = _supabase.auth.onAuthStateChange.listen((_) {
@@ -45,6 +49,7 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _authSubscription.cancel();
     _descricaoController.dispose();
     _descricaoFocusNode.dispose();
@@ -71,9 +76,12 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   }
 
   Future<void> _carregarAgendamentos() async {
-    // Regra 1: só carrega se estiver logado (RLS garante no backend também)
     if (_supabase.auth.currentUser == null) {
-      setState(() { _agendamentos = []; _isLoading = false; });
+      setState(() {
+        _agendamentos = [];
+        _agendamentosFinalizados = [];
+        _isLoading = false;
+      });
       return;
     }
     setState(() => _isLoading = true);
@@ -82,13 +90,17 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
           .from('agendamentos')
           .select()
           .order('validade', ascending: true);
+      final all = (data as List).map((e) => Agendamento.fromMap(e)).toList();
       setState(() {
-        _agendamentos =
-            (data as List).map((e) => Agendamento.fromMap(e)).toList();
+        _agendamentos = all.where((a) => !a.finalizado).toList();
+        _agendamentosFinalizados = all.where((a) => a.finalizado).toList();
       });
     } catch (e) {
       if (kDebugMode) debugPrint('_carregarAgendamentos: $e');
-      _showSnackBar('Não foi possível carregar os agendamentos. Tente novamente.', isError: true);
+      _showSnackBar(
+        'Não foi possível carregar os agendamentos. Tente novamente.',
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -156,7 +168,6 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   }
 
   Future<void> _salvarAgendamento() async {
-    // Regra 2: bloqueia ação sem login
     final user = _supabase.auth.currentUser;
     if (user == null) {
       _showSnackBar('Faça login para cadastrar agendamentos!', isError: true);
@@ -184,7 +195,6 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
             .update(dados)
             .eq('id', _editingId!);
       } else {
-        // Regra 1: associa o agendamento ao usuário logado
         await _supabase.from('agendamentos').insert({
           ...dados,
           'user_id': user.id,
@@ -204,7 +214,6 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   }
 
   void _editarAgendamento(Agendamento agendamento) {
-    // Regra 2: bloqueia ação sem login
     if (_supabase.auth.currentUser == null) {
       _showSnackBar('Faça login para editar agendamentos!', isError: true);
       return;
@@ -218,7 +227,6 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
   }
 
   void _excluirAgendamento(Agendamento agendamento) {
-    // Regra 2: bloqueia ação sem login
     if (_supabase.auth.currentUser == null) {
       _showSnackBar('Faça login para excluir agendamentos!', isError: true);
       return;
@@ -255,7 +263,10 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
                 _showSnackBar('Agendamento excluído!', isError: true);
               } catch (e) {
                 if (kDebugMode) debugPrint('_excluirAgendamento: $e');
-                _showSnackBar('Não foi possível excluir. Tente novamente.', isError: true);
+                _showSnackBar(
+                  'Não foi possível excluir. Tente novamente.',
+                  isError: true,
+                );
               }
             },
             child: const Text(
@@ -269,6 +280,82 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _finalizarAgendamento(Agendamento agendamento) async {
+    if (_supabase.auth.currentUser == null) {
+      _showSnackBar('Faça login para finalizar agendamentos!', isError: true);
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Confirmar finalização',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Deseja finalizar o agendamento "${agendamento.descricao}"?\n\nEle será movido para a aba de finalizados.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF777777)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Finalizar',
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _supabase.from('agendamentos').update({
+        'finalizado': true,
+        'finalizado_em': DateTime.now().toIso8601String(),
+      }).eq('id', agendamento.id!);
+      if (_editingId == agendamento.id) _limparFormulario();
+      await _carregarAgendamentos();
+      _showSnackBar('Agendamento finalizado!');
+    } catch (e) {
+      if (kDebugMode) debugPrint('_finalizarAgendamento: $e');
+      _showSnackBar(
+        'Não foi possível finalizar. Tente novamente.',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _reativarAgendamento(Agendamento agendamento) async {
+    if (_supabase.auth.currentUser == null) {
+      _showSnackBar('Faça login para reativar agendamentos!', isError: true);
+      return;
+    }
+    try {
+      await _supabase.from('agendamentos').update({
+        'finalizado': false,
+        'finalizado_em': null,
+      }).eq('id', agendamento.id!);
+      await _carregarAgendamentos();
+      _showSnackBar('Agendamento reativado!');
+    } catch (e) {
+      if (kDebugMode) debugPrint('_reativarAgendamento: $e');
+      _showSnackBar(
+        'Não foi possível reativar. Tente novamente.',
+        isError: true,
+      );
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -325,21 +412,43 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
 
                     const SizedBox(height: 28),
 
-                    // ─── Título da lista ───
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12.0),
-                      child: Text(
-                        'Agendamentos salvos:',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF333333),
+                    // ─── Toggle de abas (onde ficava "Agendamentos salvos:") ───
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: const Color(0xFF2E7D32),
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: const Color(0xFF555555),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        tabs: const [
+                          Tab(text: 'Salvos'),
+                          Tab(text: 'Finalizados'),
+                        ],
                       ),
                     ),
 
-                    // ─── Lista de agendamentos ───
-                    _buildListaAgendamentos(),
+                    const SizedBox(height: 12),
+
+                    // ─── Lista da aba ativa ───
+                    AnimatedBuilder(
+                      animation: _tabController,
+                      builder: (context, _) => _tabController.index == 0
+                          ? _buildListaAgendamentos()
+                          : _buildListaFinalizados(),
+                    ),
 
                     const SizedBox(height: 20),
                   ],
@@ -636,7 +745,110 @@ class _AgendamentosPageState extends State<AgendamentosPage> {
                   notificarAntes: _notificarAntes,
                   diasAntes: _diasAntes,
                   onEdit: () => _editarAgendamento(_agendamentos[index]),
+                  onFinalizar: () => _finalizarAgendamento(_agendamentos[index]),
                   onDelete: () => _excluirAgendamento(_agendamentos[index]),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListaFinalizados() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 0.5),
+        color: const Color(0xFFFAFAFA),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // ─── Cabeçalho ───
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 12.0,
+            ),
+            decoration: const BoxDecoration(
+              color: Color(0xFFECEFF1),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Descrição',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF546E7A),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Validade',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF546E7A),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 32),
+              ],
+            ),
+          ),
+
+          // ─── Itens ───
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: CircularProgressIndicator(color: Color(0xFF66BB6A)),
+            )
+          else if (_agendamentosFinalizados.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: _supabase.auth.currentUser == null
+                  ? const Column(
+                      children: [
+                        Icon(Icons.lock_outline,
+                            size: 32, color: Color(0xFF999999)),
+                        SizedBox(height: 8),
+                        Text(
+                          'Faça login para ver seus agendamentos.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF999999)),
+                        ),
+                      ],
+                    )
+                  : const Text(
+                      'Nenhum agendamento finalizado.',
+                      style: TextStyle(color: Color(0xFF999999)),
+                    ),
+          )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _agendamentosFinalizados.length,
+              itemBuilder: (context, index) {
+                return AgendamentoListItem(
+                  agendamento: _agendamentosFinalizados[index],
+                  isEven: index.isEven,
+                  isFinalizado: true,
+                  onReativar: () =>
+                      _reativarAgendamento(_agendamentosFinalizados[index]),
+                  onDelete: () =>
+                      _excluirAgendamento(_agendamentosFinalizados[index]),
                 );
               },
             ),

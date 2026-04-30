@@ -6,8 +6,11 @@ class AgendamentoListItem extends StatelessWidget {
   final bool isEven;
   final bool notificarAntes;
   final int diasAntes;
+  final bool isFinalizado;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onFinalizar;
+  final VoidCallback? onReativar;
 
   const AgendamentoListItem({
     super.key,
@@ -15,8 +18,11 @@ class AgendamentoListItem extends StatelessWidget {
     this.isEven = false,
     this.notificarAntes = false,
     this.diasAntes = 7,
+    this.isFinalizado = false,
     this.onEdit,
     this.onDelete,
+    this.onFinalizar,
+    this.onReativar,
   });
 
   @override
@@ -30,13 +36,29 @@ class AgendamentoListItem extends StatelessWidget {
     );
     final diasRestantes = validade.difference(hojeData).inDays;
 
-    final isVencido = diasRestantes < 0;
+    final isVencido = !isFinalizado && diasRestantes < 0;
     final isProximoVencer =
-        notificarAntes && !isVencido && diasRestantes <= diasAntes;
+        !isFinalizado && notificarAntes && !isVencido && diasRestantes <= diasAntes;
+
+    final Color textoColor = isFinalizado
+        ? const Color(0xFF999999)
+        : isVencido
+            ? Colors.redAccent
+            : const Color(0xFF333333);
+
+    final Color validadeColor = isFinalizado
+        ? const Color(0xFF999999)
+        : isVencido
+            ? Colors.redAccent
+            : isProximoVencer
+                ? Colors.orange
+                : const Color(0xFF555555);
 
     return Container(
       decoration: BoxDecoration(
-        color: isEven ? const Color(0xFFF1F8E9) : Colors.white,
+        color: isFinalizado
+            ? (isEven ? const Color(0xFFF5F5F5) : Colors.white)
+            : (isEven ? const Color(0xFFF1F8E9) : Colors.white),
         border: Border(
           bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
         ),
@@ -45,7 +67,6 @@ class AgendamentoListItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
         child: Row(
           children: [
-            // Ícone de alerta (vencido ou próximo do vencimento)
             if (isVencido || isProximoVencer)
               Padding(
                 padding: const EdgeInsets.only(right: 6.0),
@@ -63,40 +84,25 @@ class AgendamentoListItem extends StatelessWidget {
                 ),
               ),
 
-            // Descrição
             Expanded(
               flex: 3,
               child: Text(
                 agendamento.descricao,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isVencido
-                      ? Colors.redAccent
-                      : const Color(0xFF333333),
-                ),
+                style: TextStyle(fontSize: 14, color: textoColor),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
             ),
 
-            // Validade
             Expanded(
               flex: 2,
               child: Text(
                 agendamento.validadeFormatada,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isVencido
-                      ? Colors.redAccent
-                      : isProximoVencer
-                          ? Colors.orange
-                          : const Color(0xFF555555),
-                ),
+                style: TextStyle(fontSize: 14, color: validadeColor),
               ),
             ),
 
-            // Menu
             SizedBox(
               width: 32,
               child: PopupMenuButton<String>(
@@ -109,31 +115,63 @@ class AgendamentoListItem extends StatelessWidget {
                 onSelected: (value) {
                   if (value == 'editar') {
                     onEdit?.call();
+                  } else if (value == 'finalizar') {
+                    onFinalizar?.call();
+                  } else if (value == 'reativar') {
+                    onReativar?.call();
                   } else if (value == 'excluir') {
                     onDelete?.call();
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'editar',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 18, color: Color(0xFF555555)),
-                        SizedBox(width: 8),
-                        Text('Editar'),
-                      ],
+                  if (!isFinalizado && onEdit != null)
+                    const PopupMenuItem(
+                      value: 'editar',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18, color: Color(0xFF555555)),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'excluir',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                        SizedBox(width: 8),
-                        Text('Excluir'),
-                      ],
+                  if (!isFinalizado && onFinalizar != null)
+                    const PopupMenuItem(
+                      value: 'finalizar',
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline,
+                              size: 18, color: Color(0xFF2E7D32)),
+                          SizedBox(width: 8),
+                          Text('Finalizar',
+                              style: TextStyle(color: Color(0xFF2E7D32))),
+                        ],
+                      ),
                     ),
-                  ),
+                  if (isFinalizado && onReativar != null)
+                    const PopupMenuItem(
+                      value: 'reativar',
+                      child: Row(
+                        children: [
+                          Icon(Icons.restore,
+                              size: 18, color: Color(0xFF555555)),
+                          SizedBox(width: 8),
+                          Text('Reativar'),
+                        ],
+                      ),
+                    ),
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'excluir',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete,
+                              size: 18, color: Colors.redAccent),
+                          SizedBox(width: 8),
+                          Text('Excluir'),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

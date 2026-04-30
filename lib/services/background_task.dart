@@ -7,8 +7,7 @@ const _taskName = 'verificar_medicamentos';
 const _taskUniqueName = 'medicamentos_pets_daily_check';
 
 const _supabaseUrl = 'https://fehmhdpkbzrjpruzxuqa.supabase.co';
-const _supabaseKey =
-    'sb_publishable_wR9OMVnavXX30_pC__wY0A_28llfZZ5';
+const _supabaseKey = 'sb_publishable_wR9OMVnavXX30_pC__wY0A_28llfZZ5';
 
 // Deve ser top-level e anotada com @pragma para o WorkManager encontrá-la
 @pragma('vm:entry-point')
@@ -38,9 +37,11 @@ void callbackDispatcher() {
       if (!notificarAntes && !notificarApos) return true;
 
       final rows = await supabase
-          .from('agendamentos')
-          .select()
-          .eq('user_id', user.id) as List;
+              .from('agendamentos')
+              .select()
+              .eq('user_id', user.id)
+              .eq('finalizado', false)
+          as List;
 
       final hoje = DateTime.now();
       final hojeData = DateTime(hoje.year, hoje.month, hoje.day);
@@ -50,8 +51,11 @@ void callbackDispatcher() {
         if (validadeStr == null) continue;
 
         final validade = DateTime.parse(validadeStr);
-        final validadeData =
-            DateTime(validade.year, validade.month, validade.day);
+        final validadeData = DateTime(
+          validade.year,
+          validade.month,
+          validade.day,
+        );
         final dias = validadeData.difference(hojeData).inDays;
         final descricao = item['descricao'] as String? ?? 'Medicamento';
         // ID estável por medicamento para não duplicar notificações
