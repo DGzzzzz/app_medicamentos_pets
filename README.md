@@ -1,17 +1,70 @@
-# app_medicamentos_pets
+# Medicamentos Pets
 
-A new Flutter project.
+Aplicativo Android para controle de medicamentos de pets, com notificações automáticas de vencimento.
 
-## Getting Started
+## Download
 
-This project is a starting point for a Flutter application.
+[![Download APK](https://img.shields.io/github/v/release/DGzzzzz/app_medicamentos_pets?label=Download%20APK&logo=android&color=2E7D32)](https://github.com/DGzzzzz/app_medicamentos_pets/releases/latest)
 
-A few resources to get you started if this is your first Flutter project:
+Baixe o APK mais recente em [Releases](https://github.com/DGzzzzz/app_medicamentos_pets/releases/latest) e instale diretamente no Android.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Funcionalidades
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Agendamentos** — Cadastre medicamentos com data de aplicação e validade
+- **Pets** — Vincule cada medicamento a um pet específico
+- **Notificações** — Receba alertas automáticos de vencimento próximo e medicamentos vencidos
+- **Histórico** — Finalize agendamentos concluídos e consulte o histórico por pet
+- **Perfil** — Autenticação com e-mail/senha ou Google, com foto de perfil
+
+## Tecnologias
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | Flutter (Dart) |
+| Backend / Auth / DB | Supabase |
+| Notificações | flutter_local_notifications |
+| Background tasks | Workmanager |
+
+## Requisitos
+
+- Android 5.0 (API 21) ou superior
+- Conexão com internet
+
+## Como instalar
+
+1. Acesse [Releases](https://github.com/DGzzzzz/app_medicamentos_pets/releases/latest)
+2. Baixe o arquivo `app-release.apk`
+3. Abra o arquivo no celular e toque em **Instalar**
+4. Se solicitado, permita a instalação de fontes desconhecidas
+
+## Como compilar
+
+```bash
+# Clonar o repositório
+git clone https://github.com/DGzzzzz/app_medicamentos_pets.git
+cd app_medicamentos_pets
+
+# Instalar dependências
+flutter pub get
+
+# Executar em debug
+flutter run
+
+# Gerar APK de release (requer key.properties configurado)
+flutter build apk --release
+```
+
+### Configuração do signing (release)
+
+Crie o arquivo `android/key.properties` (não commitado) com o seguinte conteúdo:
+
+```properties
+storePassword=sua_senha
+keyAlias=seu_alias
+keyPassword=sua_senha_da_chave
+storeFile=app/keystore/release.jks
+```
+
+## Licença
+
+Este projeto é de uso privado. Todos os direitos reservados.
