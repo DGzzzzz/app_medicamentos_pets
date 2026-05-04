@@ -67,4 +67,17 @@ storeFile=app/keystore/release.jks
 
 ## Licença
 
-Este projeto é de uso privado. Todos os direitos reservados.
+Copyright (c) 2026 DGzzzzz. Todos os direitos reservados.
+
+O código-fonte deste repositório é disponibilizado publicamente **apenas para fins de visualização e referência técnica**.
+
+É **expressamente proibido**, sem autorização prévia e por escrito do autor:
+
+- Copiar, reproduzir ou reutilizar qualquer parte do código
+- Modificar, adaptar ou criar obras derivadas
+- Distribuir, sublicenciar ou publicar o código ou qualquer derivado
+- Usar o código, no todo ou em parte, em produtos comerciais ou não comerciais
+
+Este projeto não é open source. A publicidade do repositório não implica concessão de qualquer licença de uso.
+
+Para solicitações de uso ou parcerias, entre em contato pelo GitHub.
