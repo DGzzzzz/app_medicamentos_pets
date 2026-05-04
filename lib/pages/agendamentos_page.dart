@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/agendamento.dart';
 import '../models/configuracao_notificacao.dart';
+import '../models/pet.dart';
 import '../widgets/agendamento_list_item.dart';
 
 class AgendamentosPage extends StatefulWidget {
@@ -28,6 +29,8 @@ class _AgendamentosPageState extends State<AgendamentosPage>
 
   List<Agendamento> _agendamentos = [];
   List<Agendamento> _agendamentosFinalizados = [];
+  List<Pet> _pets = [];
+  Pet? _petSelecionado;
   bool _notificarAntes = false;
   int _diasAntes = 7;
 
@@ -39,10 +42,12 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     _tabController = TabController(length: 2, vsync: this);
     _carregarAgendamentos();
     _carregarConfiguracoes();
+    _carregarPets();
     _authSubscription = _supabase.auth.onAuthStateChange.listen((_) {
       if (mounted) {
         _carregarAgendamentos();
         _carregarConfiguracoes();
+        _carregarPets();
       }
     });
   }
@@ -75,6 +80,26 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     } catch (_) {}
   }
 
+  Future<void> _carregarPets() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      setState(() => _pets = []);
+      return;
+    }
+    try {
+      final data = await _supabase
+          .from('pets')
+          .select()
+          .eq('user_id', user.id)
+          .order('nome', ascending: true);
+      if (mounted) {
+        setState(() {
+          _pets = (data as List).map((e) => Pet.fromMap(e)).toList();
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _carregarAgendamentos() async {
     if (_supabase.auth.currentUser == null) {
       setState(() {
@@ -88,7 +113,7 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     try {
       final data = await _supabase
           .from('agendamentos')
-          .select()
+          .select('*, pets(nome)')
           .order('validade', ascending: true);
       final all = (data as List).map((e) => Agendamento.fromMap(e)).toList();
       setState(() {
@@ -158,12 +183,91 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     }
   }
 
+  Future<void> _selecionarPet() async {
+    await _carregarPets();
+    _descricaoFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+
+    final petsAtivos = _pets.where((p) => p.ativo).toList();
+
+    Pet? selecionado = _petSelecionado;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Selecionar pet',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Opção "Nenhum"
+              RadioListTile<Pet?>(
+                value: null,
+                groupValue: selecionado,
+                activeColor: const Color(0xFF2E7D32),
+                title: const Text('Nenhum',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF777777))),
+                onChanged: (v) => setDialogState(() => selecionado = v),
+              ),
+              if (petsAtivos.isNotEmpty)
+                Divider(color: Colors.grey.shade200, height: 1),
+              ...petsAtivos.map((pet) => RadioListTile<Pet?>(
+                    value: pet,
+                    groupValue: selecionado,
+                    activeColor: const Color(0xFF2E7D32),
+                    title: Text(pet.nome,
+                        style: const TextStyle(
+                            fontSize: 14, color: Color(0xFF333333))),
+                    secondary: const Icon(Icons.pets,
+                        size: 20, color: Color(0xFF66BB6A)),
+                    onChanged: (v) => setDialogState(() => selecionado = v),
+                  )),
+              if (petsAtivos.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Text(
+                    'Nenhum pet ativo. Adicione pets no seu perfil.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: Color(0xFF777777))),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() => _petSelecionado = selecionado);
+                Navigator.pop(ctx);
+              },
+              child: const Text(
+                'Confirmar',
+                style: TextStyle(
+                    color: Color(0xFF2E7D32), fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _limparFormulario() {
     setState(() {
       _descricaoController.clear();
       _dataAplicacao = null;
       _validade = null;
       _editingId = null;
+      _petSelecionado = null;
     });
   }
 
@@ -176,8 +280,9 @@ class _AgendamentosPageState extends State<AgendamentosPage>
 
     if (_descricaoController.text.isEmpty ||
         _dataAplicacao == null ||
-        _validade == null) {
-      _showSnackBar('Preencha todos os campos!', isError: true);
+        _validade == null ||
+        _petSelecionado == null) {
+      _showSnackBar('Preencha todos os campos obrigatórios!', isError: true);
       return;
     }
 
@@ -186,6 +291,7 @@ class _AgendamentosPageState extends State<AgendamentosPage>
       descricao: _descricaoController.text,
       dataAplicacao: _dataAplicacao!,
       validade: _validade!,
+      petId: _petSelecionado?.id,
     ).toMap();
 
     try {
@@ -213,16 +319,27 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     }
   }
 
-  void _editarAgendamento(Agendamento agendamento) {
+  Future<void> _editarAgendamento(Agendamento agendamento) async {
     if (_supabase.auth.currentUser == null) {
       _showSnackBar('Faça login para editar agendamentos!', isError: true);
       return;
+    }
+    await _carregarPets();
+    if (!mounted) return;
+    Pet? pet;
+    if (agendamento.petId != null) {
+      try {
+        pet = _pets.firstWhere((p) => p.id == agendamento.petId);
+      } catch (_) {
+        pet = null;
+      }
     }
     setState(() {
       _descricaoController.text = agendamento.descricao;
       _dataAplicacao = agendamento.dataAplicacao;
       _validade = agendamento.validade;
       _editingId = agendamento.id;
+      _petSelecionado = pet;
     });
   }
 
@@ -412,7 +529,7 @@ class _AgendamentosPageState extends State<AgendamentosPage>
 
                     const SizedBox(height: 28),
 
-                    // ─── Toggle de abas (onde ficava "Agendamentos salvos:") ───
+                    // ─── Toggle de abas ───
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F5F5),
@@ -479,6 +596,8 @@ class _AgendamentosPageState extends State<AgendamentosPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildPetField(),
+          const SizedBox(height: 12),
           _buildDescricaoField(),
           const SizedBox(height: 12),
           _buildDateField(
@@ -516,57 +635,15 @@ class _AgendamentosPageState extends State<AgendamentosPage>
     );
   }
 
-  Widget _buildDescricaoField() {
-    final count = _descricaoController.text.length;
-    return TextField(
-      controller: _descricaoController,
-      focusNode: _descricaoFocusNode,
-      maxLength: _maxDescricaoLength,
-      inputFormatters: [
-        LengthLimitingTextInputFormatter(_maxDescricaoLength),
-      ],
-      buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-      decoration: InputDecoration(
-        labelText: 'Descrição',
-        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF777777)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        suffix: Text(
-          '$count/$_maxDescricaoLength',
-          style: const TextStyle(fontSize: 10, color: Color(0xFF999999)),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
-        ),
-      ),
-      style: const TextStyle(fontSize: 14),
-      onChanged: (_) => setState(() {}),
-    );
-  }
-
-  Widget _buildDateField({
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildPetField() {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _selecionarPet,
       child: InputDecorator(
-        isEmpty: value.isEmpty,
+        isEmpty: _petSelecionado == null,
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF777777)),
+          labelText: 'Pet *',
+          labelStyle:
+              const TextStyle(fontSize: 13, color: Color(0xFF777777)),
           floatingLabelStyle: const TextStyle(
             fontSize: 14,
             color: Color(0xFF66BB6A),
@@ -585,7 +662,102 @@ class _AgendamentosPageState extends State<AgendamentosPage>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
+            borderSide:
+                const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
+          ),
+          suffixIcon: _petSelecionado != null
+              ? GestureDetector(
+                  onTap: () => setState(() => _petSelecionado = null),
+                  child: const Icon(Icons.clear,
+                      size: 18, color: Color(0xFF777777)),
+                )
+              : const Icon(Icons.pets,
+                  size: 18, color: Color(0xFF777777)),
+        ),
+        child: Text(
+          _petSelecionado?.nome ?? '',
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescricaoField() {
+    final count = _descricaoController.text.length;
+    return TextField(
+      controller: _descricaoController,
+      focusNode: _descricaoFocusNode,
+      maxLength: _maxDescricaoLength,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(_maxDescricaoLength),
+      ],
+      buildCounter:
+          (_, {required currentLength, required isFocused, maxLength}) =>
+              null,
+      decoration: InputDecoration(
+        labelText: 'Descrição',
+        labelStyle:
+            const TextStyle(fontSize: 13, color: Color(0xFF777777)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        suffix: Text(
+          '$count/$_maxDescricaoLength',
+          style: const TextStyle(fontSize: 10, color: Color(0xFF999999)),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
+        ),
+      ),
+      style: const TextStyle(fontSize: 14),
+      onChanged: (_) => setState(() {}),
+    );
+  }
+
+  Widget _buildDateField({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: InputDecorator(
+        isEmpty: value.isEmpty,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle:
+              const TextStyle(fontSize: 13, color: Color(0xFF777777)),
+          floatingLabelStyle: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF66BB6A),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: Color(0xFF66BB6A), width: 1.5),
           ),
           suffixIcon: const Icon(
             Icons.calendar_today,
@@ -613,7 +785,8 @@ class _AgendamentosPageState extends State<AgendamentosPage>
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: isPrimary
                 ? const Color(0xFFE8F5E9)
@@ -739,14 +912,16 @@ class _AgendamentosPageState extends State<AgendamentosPage>
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _agendamentos.length,
               itemBuilder: (context, index) {
+                final ag = _agendamentos[index];
                 return AgendamentoListItem(
-                  agendamento: _agendamentos[index],
+                  agendamento: ag,
                   isEven: index.isEven,
                   notificarAntes: _notificarAntes,
                   diasAntes: _diasAntes,
-                  onEdit: () => _editarAgendamento(_agendamentos[index]),
-                  onFinalizar: () => _finalizarAgendamento(_agendamentos[index]),
-                  onDelete: () => _excluirAgendamento(_agendamentos[index]),
+                  petNome: ag.petNome,
+                  onEdit: () => _editarAgendamento(ag),
+                  onFinalizar: () => _finalizarAgendamento(ag),
+                  onDelete: () => _excluirAgendamento(ag),
                 );
               },
             ),
@@ -834,21 +1009,21 @@ class _AgendamentosPageState extends State<AgendamentosPage>
                       'Nenhum agendamento finalizado.',
                       style: TextStyle(color: Color(0xFF999999)),
                     ),
-          )
+            )
           else
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _agendamentosFinalizados.length,
               itemBuilder: (context, index) {
+                final ag = _agendamentosFinalizados[index];
                 return AgendamentoListItem(
-                  agendamento: _agendamentosFinalizados[index],
+                  agendamento: ag,
                   isEven: index.isEven,
                   isFinalizado: true,
-                  onReativar: () =>
-                      _reativarAgendamento(_agendamentosFinalizados[index]),
-                  onDelete: () =>
-                      _excluirAgendamento(_agendamentosFinalizados[index]),
+                  petNome: ag.petNome,
+                  onReativar: () => _reativarAgendamento(ag),
+                  onDelete: () => _excluirAgendamento(ag),
                 );
               },
             ),

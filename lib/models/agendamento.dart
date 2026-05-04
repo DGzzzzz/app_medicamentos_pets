@@ -5,6 +5,8 @@ class Agendamento {
   final DateTime validade;
   final bool finalizado;
   final DateTime? finalizadoEm;
+  final String? petId;
+  final String? petNome;
 
   Agendamento({
     this.id,
@@ -13,6 +15,8 @@ class Agendamento {
     required this.validade,
     this.finalizado = false,
     this.finalizadoEm,
+    this.petId,
+    this.petNome,
   });
 
   factory Agendamento.fromMap(Map<String, dynamic> map) {
@@ -25,6 +29,10 @@ class Agendamento {
       finalizadoEm: map['finalizado_em'] != null
           ? DateTime.parse(map['finalizado_em'] as String)
           : null,
+      petId: map['pet_id'] as String?,
+      petNome: map['pets'] is Map
+          ? (map['pets'] as Map<String, dynamic>)['nome'] as String?
+          : null,
     );
   }
 
@@ -33,6 +41,7 @@ class Agendamento {
       'descricao': descricao,
       'data_aplicacao': dataAplicacao.toIso8601String().substring(0, 10),
       'validade': validade.toIso8601String().substring(0, 10),
+      'pet_id': petId,
     };
   }
 

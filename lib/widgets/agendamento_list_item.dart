@@ -12,6 +12,8 @@ class AgendamentoListItem extends StatelessWidget {
   final VoidCallback? onFinalizar;
   final VoidCallback? onReativar;
 
+  final String? petNome;
+
   const AgendamentoListItem({
     super.key,
     required this.agendamento,
@@ -23,6 +25,7 @@ class AgendamentoListItem extends StatelessWidget {
     this.onDelete,
     this.onFinalizar,
     this.onReativar,
+    this.petNome,
   });
 
   @override
@@ -86,11 +89,34 @@ class AgendamentoListItem extends StatelessWidget {
 
             Expanded(
               flex: 3,
-              child: Text(
-                agendamento.descricao,
-                style: TextStyle(fontSize: 14, color: textoColor),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    agendamento.descricao,
+                    style: TextStyle(fontSize: 14, color: textoColor),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  if (petNome != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.pets,
+                            size: 11, color: Color(0xFFAAAAAA)),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            petNome!,
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFFAAAAAA)),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
             ),
 
