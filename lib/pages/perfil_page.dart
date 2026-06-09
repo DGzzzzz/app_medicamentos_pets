@@ -718,14 +718,10 @@ class _PerfilPageState extends State<PerfilPage>
     return Column(
       children: [
         const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Color(0xFFE8F5E9),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.person_outline,
-              size: 48, color: Color(0xFF2E7D32)),
+        Image.asset(
+          'web/PET_saude/PET_saude.png',
+          height: 120,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: 10),
         const Text(
